@@ -4,13 +4,16 @@ interface ImageBlockProps {
   url?: string;
   alt?: string;
   caption?: string;
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
-export const ImageBlock = ({ url, alt, caption }: ImageBlockProps) => {
+export const ImageBlock = ({ url, alt, caption, paddingTop = 8, paddingBottom = 8, maxWidth = 100 }: ImageBlockProps) => {
   return (
-    <div className="w-full py-8 px-4 flex flex-col items-center">
+    <div className="w-full px-4 flex flex-col items-center mx-auto" style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
       {url ? (
-        <figure className="max-w-4xl w-full">
+        <figure className="w-full">
           <img 
             src={url} 
             alt={alt || "User hochgeladenes Bild"} 

@@ -2,9 +2,13 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableCanvasBlock } from './SortableCanvasBlock';
+import { useState } from 'react';
+import { parseRichText } from '../../utils/textParser';
+import { X } from 'lucide-react';
 
 export const Canvas = () => {
   const { activeProject, selectedBlockId, setSelectedBlockId } = useProjectStore();
+  const [activeModal, setActiveModal] = useState<'impressum' | 'privacy' | null>(null);
   const { setNodeRef, isOver } = useDroppable({
     id: 'canvas-droppable',
   });
@@ -101,6 +105,45 @@ export const Canvas = () => {
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
         </button>
+      )}
+
+      {/* Footer Links */}
+      <footer className="w-full max-w-7xl mx-auto py-8 mt-4 border-t border-gray-200 flex justify-center gap-6 text-sm text-gray-500 relative z-10">
+        <button onClick={(e) => { e.stopPropagation(); setActiveModal('impressum'); }} className="hover:underline hover:text-gray-900 cursor-pointer">Impressum</button>
+        <button onClick={(e) => { e.stopPropagation(); setActiveModal('privacy'); }} className="hover:underline hover:text-gray-900 cursor-pointer">Datenschutz</button>
+      </footer>
+
+      {/* Overlay Modal */}
+      {activeModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={(e) => { e.stopPropagation(); setActiveModal(null); }}
+        >
+          <div 
+            className="bg-white text-gray-900 rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" 
+            onClick={e => e.stopPropagation()}
+            style={{ fontFamily: `"${fontFamily}", sans-serif` }}
+          >
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold">{activeModal === 'impressum' ? 'Impressum' : 'Datenschutz'}</h2>
+              <button onClick={() => setActiveModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar">
+              <div 
+                className="prose max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ 
+                  __html: parseRichText(
+                    activeModal === 'impressum' 
+                      ? (activeProject.config?.impressumText ?? `**Angaben gem&auml;&szlig; &sect; 5 TMG**\n[Firma / Vorname Name]\n[Stra&szlig;e Hausnummer]\n[PLZ Ort]\n\n**Kontakt**\nTelefon: [Telefonnummer]\nE-Mail: [E-Mail-Adresse]\n\n**Umsatzsteuer-ID**\nUmsatzsteuer-Identifikationsnummer gem&auml;&szlig; &sect; 27 a Umsatzsteuergesetz:\n[DE123456789]`) 
+                      : (activeProject.config?.privacyText ?? `**1. Datenschutz auf einen Blick**\nDie folgenden Hinweise geben einen einfachen &Uuml;berblick dar&uuml;ber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.\n\n**Verantwortliche Stelle**\n[Firma / Vorname Name]\n[Stra&szlig;e Hausnummer]\n[PLZ Ort]\nE-Mail: [E-Mail-Adresse]\n\n**2. Datenerfassung auf dieser Website**\nIhre Daten werden zum einen dadurch erhoben, dass Sie uns diese mitteilen. Daten, die beim Besuch der Website anfallen (z.B. IP-Adressen), werden zur Fehlerbehebung oder Analyse auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeitet.`)
+                  )
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -47,6 +47,7 @@ export function buildHtmlDocument(project) {
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -76,7 +77,30 @@ export function buildHtmlDocument(project) {
         ${bgStyle}
       }
       ${bgImageStyle}
+      ${theme.enableAnimations ? `
+      .anim-hidden { opacity: 0; transform: translateY(40px); }
+      .anim-fade-up { opacity: 1; transform: translateY(0); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+      ` : ''}
+      ${theme.enableDarkMode ? `
+      html.dark body { background: #111827 !important; color: #f9fafb !important; }
+      html.dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; color: #f9fafb !important; }
+      html.dark .bg-gray-50 { background-color: #111827 !important; }
+      html.dark .text-gray-900 { color: #f9fafb !important; }
+      html.dark .text-gray-800 { color: #f3f4f6 !important; }
+      html.dark .text-gray-700 { color: #e5e7eb !important; }
+      html.dark .text-gray-600, html.dark .text-gray-500 { color: #9ca3af !important; }
+      html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color: #374151 !important; }
+      ` : ''}
     </style>
+    ${theme.enableDarkMode ? `
+    <script>
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+    ` : ''}
 </head>
 <body class="overflow-x-hidden relative">
 `;
@@ -85,7 +109,10 @@ export function buildHtmlDocument(project) {
   const page = project.pages?.[0];
   let blocksHtml = '';
   if (page && page.blocks && page.blocks.length > 0) {
-    blocksHtml = page.blocks.map(b => renderBlockToHtml(b, project)).join('\n');
+    blocksHtml = page.blocks.map(b => {
+      const bHtml = renderBlockToHtml(b, project);
+      return theme.enableAnimations ? `<div class="anim-wrapper anim-hidden">${bHtml}</div>` : bHtml;
+    }).join('\n');
   } else {
     blocksHtml = `<div class="p-10 text-center"><h1 class="text-3xl">Leeres Projekt</h1></div>`;
   }
@@ -99,8 +126,116 @@ export function buildHtmlDocument(project) {
     `;
   }
 
+  const impressumTextHtml = parseRichText(project.config?.impressumText ?? `**Angaben gem&auml;&szlig; &sect; 5 TMG**\n[Firma / Vorname Name]\n[Stra&szlig;e Hausnummer]\n[PLZ Ort]\n\n**Kontakt**\nTelefon: [Telefonnummer]\nE-Mail: [E-Mail-Adresse]\n\n**Umsatzsteuer-ID**\nUmsatzsteuer-Identifikationsnummer gem&auml;&szlig; &sect; 27 a Umsatzsteuergesetz:\n[DE123456789]`);
+  const privacyTextHtml = parseRichText(project.config?.privacyText ?? `**1. Datenschutz auf einen Blick**\nDie folgenden Hinweise geben einen einfachen &Uuml;berblick dar&uuml;ber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.\n\n**Verantwortliche Stelle**\n[Firma / Vorname Name]\n[Stra&szlig;e Hausnummer]\n[PLZ Ort]\nE-Mail: [E-Mail-Adresse]\n\n**2. Datenerfassung auf dieser Website**\nIhre Daten werden zum einen dadurch erhoben, dass Sie uns diese mitteilen. Daten, die beim Besuch der Website anfallen (z.B. IP-Adressen), werden zur Fehlerbehebung oder Analyse auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeitet.`);
+
+  let footerHtml = `
+    <!-- Footer Links -->
+    <footer class="w-full max-w-7xl mx-auto py-8 mt-4 border-t border-gray-200 flex justify-center gap-6 text-sm text-gray-500 relative z-10">
+      <button onclick="document.getElementById('modal-impressum').classList.remove('hidden'); document.body.style.overflow = 'hidden';" class="hover:underline hover:text-gray-900 cursor-pointer">Impressum</button>
+      <button onclick="document.getElementById('modal-privacy').classList.remove('hidden'); document.body.style.overflow = 'hidden';" class="hover:underline hover:text-gray-900 cursor-pointer">Datenschutz</button>
+    </footer>
+
+    <!-- Overlay Modal Impressum -->
+    <div id="modal-impressum" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm hidden" onclick="this.classList.add('hidden'); document.body.style.overflow = 'auto';">
+      <div class="bg-white text-gray-900 rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" onclick="event.stopPropagation()" style="font-family: ${fontFamily};">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h2 class="text-xl font-bold">Impressum</h2>
+          <button onclick="document.getElementById('modal-impressum').classList.add('hidden'); document.body.style.overflow = 'auto';" class="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-8 overflow-y-auto custom-scrollbar">
+          <div class="prose max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap">${impressumTextHtml}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay Modal Datenschutz -->
+    <div id="modal-privacy" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm hidden" onclick="this.classList.add('hidden'); document.body.style.overflow = 'auto';">
+      <div class="bg-white text-gray-900 rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden" onclick="event.stopPropagation()" style="font-family: ${fontFamily};">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+          <h2 class="text-xl font-bold">Datenschutz</h2>
+          <button onclick="document.getElementById('modal-privacy').classList.add('hidden'); document.body.style.overflow = 'auto';" class="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-8 overflow-y-auto custom-scrollbar">
+          <div class="prose max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap">${privacyTextHtml}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let darkModeToggleHtml = '';
+  if (theme.enableDarkMode) {
+    darkModeToggleHtml = `
+      <button id="theme-toggle" type="button" class="fixed top-6 right-6 z-[100] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none rounded-lg text-sm p-2.5 shadow-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors">
+        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+      </button>
+      <script>
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        var themeToggleBtn = document.getElementById('theme-toggle');
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (localStorage.getItem('theme')) {
+                if (localStorage.getItem('theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                }
+            }
+        });
+      </script>
+    `;
+  }
+
+  let animationScript = '';
+  if (theme.enableAnimations) {
+    animationScript = `
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.remove('anim-hidden');
+              entry.target.classList.add('anim-fade-up');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+        document.querySelectorAll('.anim-wrapper').forEach(el => observer.observe(el));
+      });
+    </script>
+    `;
+  }
+
   html += `${blocksHtml}
+${darkModeToggleHtml}
+${footerHtml}
 ${scrollToTopHtml}
+${animationScript}
 </body>
 </html>`;
 
@@ -139,6 +274,13 @@ function getFontFamily(font) {
 // Entflechtung der Blöcke
 function renderBlockToHtml(block, project) {
   const props = block.props || {};
+  const pt = props.paddingTop !== undefined ? props.paddingTop : 4;
+  const pb = props.paddingBottom !== undefined ? props.paddingBottom : 4;
+  const mw = props.maxWidth !== undefined ? props.maxWidth : 100;
+  const styleObj = (props.bgType === 'custom' && props.bgColor) ? `background-color: ${escapeHtml(props.bgColor)};` : '';
+  const inlineStyle = `style="${styleObj} padding-top: ${pt}rem; padding-bottom: ${pb}rem; max-width: ${mw}%;"`;
+  const containerStyle = `style="padding-top: ${pt}rem; padding-bottom: ${pb}rem; max-width: ${mw}vw; margin: 0 auto;"`;
+
 
   switch (block.type) {
     case 'NavbarBlock': {
@@ -163,25 +305,46 @@ function renderBlockToHtml(block, project) {
       const decoHtml = props.showDecoration ? `<div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-secondary blur-[50px] opacity-20 pointer-events-none z-0"></div>` : "";
       const anchorAttr = props.anchorId ? `id="${escapeHtml(props.anchorId)}"` : '';
 
+      const mobileNavId = props.anchorId ? `mobile-menu-${escapeHtml(props.anchorId)}` : `mobile-menu-default`;
+      
+      const mobileMenuHtml = `
+        <div class="md:hidden flex flex-col gap-1.5 cursor-pointer relative z-10 p-2 -mr-2" onclick="document.getElementById('${mobileNavId}').classList.remove('hidden'); document.body.style.overflow='hidden';">
+          <div class="w-6 h-0.5 bg-gray-600 rounded pointer-events-none"></div>
+          <div class="w-6 h-0.5 bg-gray-600 rounded pointer-events-none"></div>
+          <div class="w-6 h-0.5 bg-gray-600 rounded pointer-events-none"></div>
+        </div>
+
+        <div id="${mobileNavId}" class="hidden fixed inset-0 bg-white z-[200] flex flex-col pt-24 px-8 shadow-xl md:hidden">
+          <button onclick="document.getElementById('${mobileNavId}').classList.add('hidden'); document.body.style.overflow='auto';" class="absolute top-8 right-8 p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+          <div class="flex flex-col gap-6 text-xl font-medium text-gray-800">
+            ${parsedLinks.map(l => `<a href="#${escapeHtml(l)}" onclick="document.getElementById('${mobileNavId}').classList.add('hidden'); document.body.style.overflow='auto';" class="block border-b border-gray-100 pb-4">${escapeHtml(l)}</a>`).join('\n')}
+          </div>
+          ${!props.hideButton ? `<button class="mt-8 px-5 py-3 w-full bg-primary text-white rounded-theme text-lg font-medium pointer-events-none">Get Started</button>` : ''}
+        </div>
+      `;
+
       return `
         <!-- NavbarBlock -->
-        <div ${anchorAttr} class="w-full relative overflow-hidden flex items-center justify-between px-8 py-6 mb-4 rounded-theme ${bgClass} ${borderClass}" ${customBg}>
+        <div ${anchorAttr} class="w-full relative overflow-hidden flex items-center px-8  mb-4 rounded-theme ${bgClass} ${borderClass}"  ${inlineStyle}>
           ${decoHtml}
-          <div class="flex items-center gap-3 relative z-10">
+          <div class="flex items-center gap-3 relative z-10 mr-auto">
             ${logoHtml}
             <span class="font-bold text-xl tracking-tight text-gray-900">${logoText}</span>
           </div>
-          <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600 relative z-10">
+          <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600 relative z-10 mr-8">
             ${linksHtml}
           </nav>
-          <div class="relative z-10">${btnHtml}</div>
+          ${btnHtml}
+          ${mobileMenuHtml}
         </div>
       `;
     }
 
     case 'HeroSection': {
-      const headline = parseRichText(props.headline || "Dein unglaublicher Slogan steht hier.");
-      const subline = parseRichText(props.subline || "Unterstützender Text, der Besuchern genau sagt, was du anbietest und warum sie hier klicken sollten.");
+      const headline = parseRichText(props.headline || "Dein unglaublicher Slogan steht *hier*.");
+      const subline = parseRichText(props.subline || "Unterstützender Text, der Besuchern ++genau sagt++, was du anbietest und warum sie hier klicken sollten.");
       const buttonText = escapeHtml(props.buttonText || "Mehr erfahren");
       const buttonHtml = props.hideButton ? "" : `<button class="px-8 py-4 bg-primary text-white rounded-theme font-medium shadow-lg hover:opacity-90 transition-opacity">${buttonText}</button>`;
 
@@ -193,7 +356,7 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- HeroSection -->
-        <div ${anchorAttr} class="w-full max-w-7xl mx-auto relative overflow-hidden rounded-theme my-4 ${bgClass} ${borderClass}" ${customBg}>
+        <div ${anchorAttr} class="w-full  mx-auto relative overflow-hidden rounded-theme my-4 ${bgClass} ${borderClass}"  ${inlineStyle}>
           ${decoHtml}
           <div class="relative z-10 px-8 py-20 md:px-12 md:py-32 flex flex-col items-start justify-center">
             <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-gray-900 mb-6 max-w-3xl leading-tight">${headline}</h1>
@@ -206,7 +369,7 @@ function renderBlockToHtml(block, project) {
 
     case 'TextBlock': {
       const title = props.title ? parseRichText(props.title) : "";
-      const content = parseRichText(props.content || "Hier ist Platz für deinen Fließtext. Beschreibe detailliert einen Aspekt deines Unternehmens, erkläre ein Produkt oder teile einfach Informationen mit deinen Besuchern. Dieser Block passt sich an die Textmenge an.");
+      const content = parseRichText(props.content || "Hier ist Platz für deinen Fließtext. Beschreibe detailliert einen Aspekt deines Unternehmens, erkläre ein Produkt oder teile einfach Informationen mit deinen Besuchern. Dieser Block ++passt sich++ an die Textmenge an.");
       const align = props.alignment || "left";
       
       const titleHtml = title ? `<h2 class="text-3xl font-bold text-gray-900 mb-6">${title}</h2>` : "";
@@ -220,7 +383,7 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- TextBlock -->
-        <div ${anchorAttr} class="w-full py-16 px-8 md:px-12 my-2 text-${align} max-w-7xl mx-auto relative overflow-hidden rounded-theme ${bgClass} ${borderClass} ${paddingClass}" ${customBg}>
+        <div ${anchorAttr} class="w-full  px-8 md:px-12 my-2 text-${align}  mx-auto relative overflow-hidden rounded-theme ${bgClass} ${borderClass} ${paddingClass}"  ${inlineStyle}>
           ${decoHtml}
           <div class="relative z-10">
             ${titleHtml}
@@ -231,7 +394,7 @@ function renderBlockToHtml(block, project) {
     }
 
     case 'ImageBlock': {
-      if (!props.url) return `<div class="w-full py-8 px-4 flex flex-col items-center"><div class="w-full max-w-4xl aspect-[16/9] bg-gray-100 rounded-theme border-2 border-dashed border-gray-300"></div></div>`;
+      if (!props.url) return `<div class="w-full py-8 px-4 flex flex-col items-center"><div class="w-full max-w-4xl aspect-[16/9] bg-gray-100 rounded-theme border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4 opacity-50"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><p class="font-medium">Kein Bild ausgew&auml;hlt</p><p class="text-sm mt-1">Klicke diesen Block an, um in der Sidebar ein Bild zu hinterlegen.</p></div></div>`;
       
       const url = processUrl(props.url, true);
       const alt = escapeHtml(props.alt || "User Logo");
@@ -239,8 +402,8 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- ImageBlock -->
-        <div class="w-full py-8 px-4 flex flex-col items-center max-w-7xl mx-auto">
-          <figure class="max-w-4xl w-full">
+        <div class="w-full px-4 flex flex-col items-center mx-auto" ${inlineStyle}>
+          <figure class="w-full">
             <img src="${url}" alt="${alt}" class="w-full h-auto rounded-theme shadow-xl object-cover" />
             ${captionHtml}
           </figure>
@@ -259,10 +422,12 @@ function renderBlockToHtml(block, project) {
       if (variant === 'primary') variantClass = "bg-primary text-white hover:opacity-90";
       if (variant === 'secondary') variantClass = "bg-secondary text-white hover:opacity-90";
 
+      const targetAttr = !link.startsWith('#') && link !== '#' ? 'target="_blank" rel="noopener noreferrer"' : '';
+
       return `
         <!-- ButtonBlock -->
-        <div class="w-full py-6 px-4 flex justify-${alignClass} max-w-7xl mx-auto">
-          <a href="${link}" class="inline-flex items-center justify-center px-8 py-4 font-semibold rounded-theme transition-all shadow-sm hover:shadow-md ${variantClass}">
+        <div class="w-full  px-4 flex justify-${alignClass}  mx-auto" ${inlineStyle}>
+          <a href="${link}" ${targetAttr} class="inline-flex items-center justify-center px-8 py-4 font-semibold rounded-theme transition-all shadow-sm hover:shadow-md ${variantClass}">
             ${label}
           </a>
         </div>
@@ -271,14 +436,16 @@ function renderBlockToHtml(block, project) {
 
     case 'SplitBlock': {
       const imageLeft = props.imageLeft !== false;
-      const title = parseRichText(props.title || "Eine starke Aussage für dein Produkt.");
-      const text = parseRichText(props.text || "Nutze diesen Text, um den Wert deines Bildes hervorzuheben.");
+      const title = parseRichText(props.title || "Eine ++starke Aussage++ für dein Produkt.");
+      const text = parseRichText(props.text || "Nutze diesen Text, um den Wert deines Bildes auf der anderen Seite hervorzuheben. Ein Split-Layout eignet sich perfekt, um **komplexe Informationen** in leicht verdauliche, visuelle Happen zu verpacken.");
       const btn = escapeHtml(props.buttonLabel || "");
-      const imgUrl = props.imageUrl ? processUrl(props.imageUrl, true) : "https://placehold.co/800x600/f3f4f6/a1a1aa?text=Platzhalter";
-
+      const imageWidth = props.imageWidth !== undefined ? props.imageWidth : 50;
+      
       const btnHtml = btn ? `<div><button class="px-6 py-3 bg-white border-2 border-primary text-primary rounded-theme font-bold hover:bg-primary hover:text-white transition-colors">${btn}</button></div>` : "";
       
-      const imgHtml = `<div class="w-full h-full min-h-[300px] flex items-center justify-center relative z-10"><img src="${imgUrl}" class="w-full h-full object-cover rounded-theme shadow-xl max-h-[500px]" /></div>`;
+      const imgHtml = props.imageUrl 
+        ? `<div class="w-full h-full min-h-[300px] flex items-center justify-center relative z-10"><img src="${processUrl(props.imageUrl, true)}" class="w-full h-auto object-cover rounded-theme shadow-xl" /></div>`
+        : `<div class="w-full h-full min-h-[300px] bg-gray-100 rounded-theme border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 relative z-10"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4 opacity-50"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><p class="font-medium text-center px-4">Bild in der Sidebar erg&auml;nzen</p></div>`;
       
       const customBg = props.bgType === 'custom' && props.bgColor ? `style="background-color: ${escapeHtml(props.bgColor)};"` : '';
       const bgClassGrid = props.bgType === 'transparent' ? 'bg-transparent' : (props.bgType === 'custom' ? '' : '');
@@ -293,9 +460,9 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- SplitBlock -->
-        <div ${anchorAttr} class="w-full py-16 overflow-hidden max-w-7xl mx-auto relative">
+        <div ${anchorAttr} class="w-full overflow-hidden mx-auto relative" ${inlineStyle}>
           ${decoHtml}
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center rounded-theme relative z-10 ${bgClassGrid} ${borderClassGrid} ${paddingClass}" ${customBg}>
+          <div class="grid grid-cols-1 ${imageLeft ? 'lg:grid-cols-[var(--split-img-w)_1fr]' : 'lg:grid-cols-[1fr_var(--split-img-w)]'} gap-8 md:gap-16 items-center rounded-theme relative z-10 ${bgClassGrid} ${borderClassGrid} ${paddingClass}" style="${customBg ? customBg.replace('style="', '').replace('"', '') : ''} --split-img-w: ${imageWidth}%;">
             ${imageLeft ? imgHtml + txtHtml : txtHtml + imgHtml}
           </div>
         </div>
@@ -344,7 +511,7 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- FeaturesGridBlock -->
-        <div ${anchorAttr} class="w-full py-16 px-6 max-w-7xl mx-auto relative overflow-hidden">
+        <div ${anchorAttr} class="w-full  px-6  mx-auto relative overflow-hidden" ${inlineStyle}>
           ${decoHtml}
           <div class="grid grid-cols-1 ${colClass} gap-x-8 gap-y-12 relative z-10">
             ${gridContent}
@@ -365,7 +532,7 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- VideoBlock -->
-        <div ${anchorAttr} class="w-full py-16 px-4 flex flex-col items-center max-w-7xl mx-auto">
+        <div ${anchorAttr} class="w-full  px-4 flex flex-col items-center  mx-auto" ${inlineStyle}>
           ${headerHtml}
           ${url ? `
           <figure class="max-w-4xl w-full">
@@ -392,7 +559,7 @@ function renderBlockToHtml(block, project) {
 
         const avatarHtml = avatarUrl
           ? `<img src="${avatarUrl}" alt="${escapeHtml(fData.name || '')}" class="w-full h-full object-cover" />`
-          : `<div class="w-10 h-10 bg-gray-400 rounded-full select-none"></div>`;
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 text-gray-400"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
 
         gridContent += `
           <div class="flex flex-col items-center text-center p-8 rounded-theme ${bgClassGrid} ${borderClassGrid}" ${customBg}>
@@ -409,7 +576,7 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- AvatarGridBlock -->
-        <div ${anchorAttr} class="w-full py-16 px-4">
+        <div ${anchorAttr} class="w-full  px-4" ${inlineStyle}>
           <div class="max-w-7xl mx-auto grid grid-cols-1 ${colClass} gap-8">
             ${gridContent}
           </div>
@@ -429,13 +596,17 @@ function renderBlockToHtml(block, project) {
         const desc = parseRichText(sData.description || "");
         const image = sData.image ? processUrl(sData.image, true) : "";
 
+        const aspectRatio = props.aspectRatio || 'mixed';
+        const aspectClass = aspectRatio === '16/9' ? 'aspect-video' : aspectRatio === '1/1' ? 'aspect-square' : aspectRatio === '9/16' ? 'aspect-[9/16]' : '';
+        const imgClass = aspectRatio !== 'mixed' ? 'w-full h-full object-cover' : 'w-full h-auto max-h-[60vh] object-contain';
+
         const imageHtml = image 
-          ? `<img src="${image}" alt="${escapeHtml(sData.title || '')}" class="w-full h-auto max-h-[60vh] object-contain" />` 
-          : `<div class="w-full aspect-[4/3] bg-gray-200"></div>`;
+          ? `<img src="${image}" alt="${escapeHtml(sData.title || '')}" class="${imgClass}" />` 
+          : `<div class="w-full aspect-[4/3] flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 text-gray-300"><path d="M2 3v18"/><path d="M22 3v18"/><path d="M6 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z"/></svg></div>`;
 
         slidesContent += `
-          <div class="snap-center shrink-0 w-[85vw] md:w-[60vw] lg:w-[40vw] flex flex-col items-center bg-white border border-gray-100 rounded-theme shadow-sm overflow-hidden">
-            <div class="w-full flex items-center justify-center overflow-hidden relative bg-gray-50">
+          <div class="snap-center shrink-0 w-[85vw] md:w-[60vw] lg:w-[40vw] flex flex-col items-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-theme shadow-sm overflow-hidden">
+            <div class="w-full flex items-center justify-center overflow-hidden relative bg-gray-50 dark:bg-gray-800 ${aspectClass}">
               ${imageHtml}
             </div>
             ${(title || desc) ? `
@@ -470,7 +641,7 @@ function renderBlockToHtml(block, project) {
 
       return `
         <!-- CarouselBlock -->
-        <div ${anchorAttr ? `id="${blockId}"` : `id="wrap_${blockId}"`} class="w-full py-16 px-4 overflow-hidden relative group">
+        <div ${anchorAttr ? `id="${blockId}"` : `id="wrap_${blockId}"`} class="w-full  px-4 overflow-hidden relative group" ${inlineStyle}>
           <style>
             #scroll_container_${blockId}::-webkit-scrollbar { display: none; }
           </style>
@@ -478,6 +649,210 @@ function renderBlockToHtml(block, project) {
             ${slidesContent}
           </div>
           ${autoPlayScript}
+        </div>
+      `;
+    }
+
+    case 'LeadCaptureBlock': {
+      const headline = escapeHtml(props.headline || "Werde Teil der Community!");
+      const subline = escapeHtml(props.subline || "Melde dich für unseren Newsletter an und erhalte exklusive Angebote direkt in dein Postfach.");
+      const buttonText = escapeHtml(props.buttonText || "Kostenlos eintragen");
+      const endpoint = escapeHtml(props.endpoint || '');
+      
+      const customBg = props.bgType === 'custom' && props.bgColor ? `style="background-color: ${escapeHtml(props.bgColor)};"` : '';
+      const bgClass = props.bgType === 'transparent' ? 'bg-transparent' : (props.bgType === 'custom' ? '' : 'bg-white');
+      const borderClass = props.noShadow || props.bgType === 'transparent' ? 'border-none shadow-none' : 'border border-gray-100 shadow-sm';
+      const anchorAttr = props.anchorId ? `id="${escapeHtml(props.anchorId)}"` : '';
+      const decoHtml = props.showDecoration ? `<div class="absolute top-1/2 left-0 -ml-20 -mt-20 w-64 h-64 rounded-full bg-secondary blur-[60px] opacity-20 pointer-events-none z-0"></div>` : "";
+
+      return `
+        <!-- LeadCaptureBlock -->
+        <div ${anchorAttr} class="w-full  mx-auto rounded-theme my-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between p-8 md:p-12 gap-8 ${bgClass} ${borderClass}"  ${inlineStyle}>
+          ${decoHtml}
+          <div class="relative z-10 flex-1">
+            <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">${headline}</h3>
+            <p class="text-gray-500 leading-relaxed max-w-md">${subline}</p>
+          </div>
+          <div class="relative z-10 w-full md:w-auto shrink-0 border border-gray-200 p-2 rounded-lg bg-white/50 backdrop-blur">
+            <form action="${endpoint}" method="POST" class="flex flex-col sm:flex-row gap-2 m-0">
+              <input type="email" name="email" required placeholder="deine@email.de" class="px-4 py-3 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64" />
+              <button type="submit" class="px-6 py-3 bg-primary text-white font-medium rounded-md hover:opacity-90 transition-opacity whitespace-nowrap cursor-pointer">${buttonText}</button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    case 'PricingBlock': {
+      const headline = escapeHtml(props.headline || "Einfache, transparente Preise");
+      const subline = escapeHtml(props.subline || "Wähle den Plan, der am besten zu deinem Unternehmen passt. Keine versteckten Kosten.");
+      const t1Name = escapeHtml(props.tier1Name || "Starter");
+      const t1Price = escapeHtml(props.tier1Price || "0€");
+      const t1Feat = escapeHtml(props.tier1Features || "1 Benutzer, 5 Projekte, Basic Support");
+      
+      const t2Name = escapeHtml(props.tier2Name || "Pro");
+      const t2Price = escapeHtml(props.tier2Price || "29€");
+      const t2Feat = escapeHtml(props.tier2Features || "5 Benutzer, Unlimitierte Projekte, Priority Support");
+      const t2High = props.tier2Highlight !== false;
+      
+      const t3Name = escapeHtml(props.tier3Name || "Enterprise");
+      const t3Price = escapeHtml(props.tier3Price || "99€");
+      const t3Feat = escapeHtml(props.tier3Features || "Unlimitierte Benutzer, Unlimitierte Projekte, 24/7 Phone Support");
+      
+      const bgType = props.bgType || 'default';
+      const bgColor = props.bgColor;
+      const noShadow = props.noShadow || false;
+      
+      const customBg = bgType === 'custom' && bgColor ? `style="background-color: ${escapeHtml(bgColor)};"` : '';
+      const bgClassGrid = bgType === 'transparent' ? 'bg-transparent' : (bgType === 'custom' ? '' : 'bg-white');
+      const borderClassGrid = noShadow || bgType === 'transparent' ? 'border-none shadow-none' : 'border border-gray-100 shadow-sm';
+      const anchorAttr = props.anchorId ? `id="${escapeHtml(props.anchorId)}"` : '';
+
+      const renderFeat = (fStr) => fStr.split(',').map(f => `<li class="flex items-center gap-2 text-sm text-gray-600 mb-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><polyline points="20 6 9 17 4 12"></polyline></svg>${escapeHtml(f.trim())}</li>`).join('');
+
+      return `
+        <!-- PricingBlock -->
+        <div ${anchorAttr} class="w-full  px-4  mx-auto flex flex-col items-center" ${inlineStyle}>
+          <div class="text-center max-w-3xl mb-12">
+            <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">${headline}</h2>
+            <p class="text-lg text-gray-500">${subline}</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
+            <div class="p-8 rounded-theme flex flex-col ${bgClassGrid} ${borderClassGrid}" ${customBg}>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">${t1Name}</h3>
+              <div class="text-3xl font-extrabold text-gray-900 mb-6">${t1Price}<span class="text-sm font-normal text-gray-500">/Monat</span></div>
+              <ul class="mb-8 flex-1">${renderFeat(t1Feat)}</ul>
+              <button class="w-full py-3 px-4 border border-gray-200 text-gray-900 font-medium rounded-theme hover:border-primary transition-colors cursor-pointer">Starten</button>
+            </div>
+            
+            <div class="p-8 rounded-theme flex flex-col relative ${bgClassGrid} ${t2High ? 'ring-2 ring-primary shadow-xl scale-105 z-10' : borderClassGrid}" ${customBg}>
+              ${t2High ? `<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-white px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-full">Am beliebtesten</div>` : ''}
+              <h3 class="text-xl font-bold text-gray-900 mb-2">${t2Name}</h3>
+              <div class="text-3xl font-extrabold text-gray-900 mb-6">${t2Price}<span class="text-sm font-normal text-gray-500">/Monat</span></div>
+              <ul class="mb-8 flex-1">${renderFeat(t2Feat)}</ul>
+              <button class="w-full py-3 px-4 bg-primary text-white font-medium rounded-theme hover:opacity-90 transition-opacity cursor-pointer">Starten</button>
+            </div>
+            
+            <div class="p-8 rounded-theme flex flex-col ${bgClassGrid} ${borderClassGrid}" ${customBg}>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">${t3Name}</h3>
+              <div class="text-3xl font-extrabold text-gray-900 mb-6">${t3Price}<span class="text-sm font-normal text-gray-500">/Monat</span></div>
+              <ul class="mb-8 flex-1">${renderFeat(t3Feat)}</ul>
+              <button class="w-full py-3 px-4 border border-gray-200 text-gray-900 font-medium rounded-theme hover:border-primary transition-colors cursor-pointer">Kontaktieren</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    case 'FaqBlock': {
+      const headline = escapeHtml(props.headline || "Häufig gestellte Fragen");
+      const subline = escapeHtml(props.subline || "Hier findest du schnelle Antworten auf die wichtigsten Fragen.");
+      const bgType = props.bgType || 'default';
+      const bgColor = props.bgColor;
+      const noShadow = props.noShadow || false;
+      
+      const customBg = bgType === 'custom' && bgColor ? `style="background-color: ${escapeHtml(bgColor)};"` : '';
+      const bgClassGrid = bgType === 'transparent' ? 'bg-transparent' : (bgType === 'custom' ? '' : 'bg-white');
+      const borderClassGrid = noShadow || bgType === 'transparent' ? 'border-none shadow-none' : 'border border-gray-100 shadow-sm';
+      const anchorAttr = props.anchorId ? `id="${escapeHtml(props.anchorId)}"` : '';
+
+      let items = [
+        { q: "Wie kann ich mein Abonnement kündigen?", a: "Du kannst dein Abonnement jederzeit in den Kontoeinstellungen unter 'Abrechnung' kündigen. Nach der Kündigung kannst du den Service noch bis zum Ende der laufenden Abrechnungsperiode nutzen." },
+        { q: "Gibt es eine kostenlose Testphase?", a: "Ja, wir bieten eine 14-tägige kostenlose Testphase für alle neuen Nutzer an. Es ist keine Kreditkarte erforderlich." },
+        { q: "Welche Zahlungsmethoden werden akzeptiert?", a: "Wir akzeptieren alle gängigen Kreditkarten (Visa, Mastercard, American Express) sowie PayPal und SEPA-Lastschrift." }
+      ];
+      try {
+        if (props.faqs) items = JSON.parse(props.faqs);
+      } catch(e) {}
+
+      const itemsHtml = items.map(item => `
+        <details class="group ${bgClassGrid} ${borderClassGrid} rounded-theme overflow-hidden mb-4" ${customBg}>
+          <summary class="flex items-center justify-between p-6 font-bold text-gray-900 cursor-pointer list-none select-none">
+            <span>${escapeHtml(item.q)}</span>
+            <span class="transition group-open:rotate-180">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </span>
+          </summary>
+          <div class="px-6 pb-6 text-gray-600 leading-relaxed border-t border-gray-100 pt-4">
+            ${escapeHtml(item.a)}
+          </div>
+        </details>
+      `).join('');
+
+      return `
+        <!-- FaqBlock -->
+        <div ${anchorAttr} class="w-full  px-6  mx-auto flex flex-col items-center" ${inlineStyle}>
+          <div class="text-center w-full mb-12">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-4">${headline}</h2>
+            <p class="text-lg text-gray-500">${subline}</p>
+          </div>
+          <div class="w-full flex flex-col">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    case 'TestimonialBlock': {
+      const headline = escapeHtml(props.headline || "Was unsere Kunden sagen");
+      const subline = escapeHtml(props.subline || "Schließe dich tausenden zufriedenen Nutzern an.");
+      const bgType = props.bgType || 'default';
+      const bgColor = props.bgColor;
+      const noShadow = props.noShadow || false;
+      
+      const customBg = bgType === 'custom' && bgColor ? `style="background-color: ${escapeHtml(bgColor)};"` : '';
+      const bgClassGrid = bgType === 'transparent' ? 'bg-transparent' : (bgType === 'custom' ? '' : 'bg-white');
+      const borderClassGrid = noShadow || bgType === 'transparent' ? 'border-none shadow-none' : 'border border-gray-100 shadow-sm';
+      const anchorAttr = props.anchorId ? `id="${escapeHtml(props.anchorId)}"` : '';
+
+      let items = [
+        { quote: "Seit wir dieses Tool nutzen, hat sich unsere Produktivität verdoppelt. Einfach überragend!", author: "Sarah Müller", role: "CEO, TechFlow", stars: 5 },
+        { quote: "Der Support ist blitzschnell und die Software unfassbar intuitiv. Eine absolute Empfehlung.", author: "Markus Schmidt", role: "Freelancer", stars: 5 },
+        { quote: "Beste Entscheidung des Jahres. Hat uns extrem viel Zeit und Kopfschmerzen erspart.", author: "Julia Weber", role: "Projektleiterin", stars: 4 }
+      ];
+      try {
+        if (props.testimonials) items = JSON.parse(props.testimonials);
+      } catch(e) {}
+
+      const renderStars = (count) => {
+        let h = '';
+        for(let i=0; i<5; i++) {
+          const filled = i < count;
+          h += `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${filled ? 'text-yellow-400' : 'text-gray-300'}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        }
+        return h;
+      };
+
+      const itemsHtml = items.map(item => {
+        const imgSection = item.image 
+          ? `<img src="${escapeStyleUrl(item.image)}" alt="${escapeHtml(item.author)}" class="w-12 h-12 rounded-full object-cover shadow-sm" />`
+          : `<div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">${escapeHtml(item.author.charAt(0))}</div>`;
+          
+        return `
+          <div class="p-8 rounded-theme flex flex-col gap-6 ${bgClassGrid} ${borderClassGrid}" ${customBg}>
+            <div class="flex gap-1">${renderStars(item.stars)}</div>
+            <p class="text-gray-700 italic leading-relaxed flex-1">"${escapeHtml(item.quote)}"</p>
+            <div class="flex items-center gap-4 mt-2">
+              ${imgSection}
+              <div>
+                <div class="font-bold text-gray-900">${escapeHtml(item.author)}</div>
+                <div class="text-sm text-gray-500">${escapeHtml(item.role)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <!-- TestimonialBlock -->
+        <div ${anchorAttr} class="w-full  px-6  mx-auto flex flex-col items-center" ${inlineStyle}>
+          <div class="text-center w-full mb-12">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-4">${headline}</h2>
+            <p class="text-lg text-gray-500">${subline}</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+            ${itemsHtml}
+          </div>
         </div>
       `;
     }

@@ -6,11 +6,14 @@ interface VideoBlockProps {
   title?: string;
   text?: string;
   autoPlay?: boolean;
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
-export const VideoBlock = ({ url, title, text, autoPlay = true }: VideoBlockProps) => {
+export const VideoBlock = ({ url, title, text, autoPlay = true, paddingTop = 4, paddingBottom = 4, maxWidth = 100 }: VideoBlockProps) => {
   return (
-    <div className="w-full py-16 px-4 flex flex-col items-center">
+    <div className="w-full px-4 flex flex-col items-center mx-auto" style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
       <div className="max-w-4xl w-full text-center mb-8">
         {title && <h2 className="text-3xl font-bold mb-4" dangerouslySetInnerHTML={parseRichText(title)} />}
         {text && <p className="text-lg text-gray-600 max-w-2xl mx-auto" dangerouslySetInnerHTML={parseRichText(text)} />}

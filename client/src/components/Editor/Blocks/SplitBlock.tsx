@@ -9,18 +9,23 @@ interface SplitBlockProps {
   buttonLabel?: string;
   bgType?: string;
   bgColor?: string;
+  bgColor?: string;
   noShadow?: boolean;
   showDecoration?: boolean;
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
+  imageWidth?: number;
 }
 
-export const SplitBlock = ({ imageLeft = true, title, text, imageUrl, buttonLabel, bgType = 'default', bgColor, noShadow = false, showDecoration = false }: SplitBlockProps) => {
+export const SplitBlock = ({ imageLeft = true, title, text, imageUrl, buttonLabel, bgType = 'default', bgColor, noShadow = false, showDecoration = false, paddingTop = 4, paddingBottom = 4, maxWidth = 100, imageWidth = 50 }: SplitBlockProps) => {
   const ImageContainer = () => (
     <div className="w-full h-full min-h-[300px] flex items-center justify-center relative z-10">
       {imageUrl ? (
         <img 
           src={imageUrl} 
           alt={title || "Split Block Image"} 
-          className="w-full h-full object-cover rounded-theme shadow-xl max-h-[500px]"
+          className="w-full h-auto object-cover rounded-theme shadow-xl"
         />
       ) : (
         <div className="w-full h-full min-h-[300px] bg-gray-100 rounded-theme border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
@@ -62,13 +67,16 @@ export const SplitBlock = ({ imageLeft = true, title, text, imageUrl, buttonLabe
     : "left-0 -translate-x-1/3";
 
   return (
-    <div className="w-full py-16 overflow-hidden relative">
+    <div className="w-full mx-auto relative" style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
       {/* Decorative gradient blob */}
       {showDecoration && (
         <div className={`absolute top-1/2 ${decoPositionClass} -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-secondary blur-[120px] opacity-15 pointer-events-none z-0`}></div>
       )}
 
-      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center rounded-theme ${bgClassGrid} ${borderClassGrid} ${paddingClass}`} style={customBg}>
+      <div 
+        className={`grid grid-cols-1 ${imageLeft ? 'lg:grid-cols-[var(--split-img-w)_1fr]' : 'lg:grid-cols-[1fr_var(--split-img-w)]'} gap-8 md:gap-16 items-center rounded-theme ${bgClassGrid} ${borderClassGrid} ${paddingClass}`} 
+        style={{ ...customBg, '--split-img-w': `${imageWidth}%` } as any}
+      >
         {imageLeft ? (
           <>
             <ImageContainer />

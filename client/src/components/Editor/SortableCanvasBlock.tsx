@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Copy, Trash2 } from 'lucide-react';
 import { BlockRenderer } from './Blocks/BlockRenderer';
 import { useProjectStore } from '../../store/useProjectStore';
 import type { Block } from '../../types';
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const SortableCanvasBlock = ({ block }: Props) => {
-  const { selectedBlockId, setSelectedBlockId } = useProjectStore();
+  const { selectedBlockId, setSelectedBlockId, deleteBlock, duplicateBlock } = useProjectStore();
   
   const { 
     attributes, 
@@ -55,6 +55,28 @@ export const SortableCanvasBlock = ({ block }: Props) => {
       >
         <GripVertical size={24} />
       </div>
+
+      {/* Floating Action Bar */}
+      {selectedBlockId === block.id && (
+        <div className="absolute -top-3 -right-3 z-[60] flex flex-col gap-1 bg-white shadow-lg border border-gray-200 rounded-lg p-1">
+          <button 
+            onClick={(e) => { e.stopPropagation(); duplicateBlock(block.id); }} 
+            className="p-1.5 text-gray-500 hover:text-primary hover:bg-purple-50 rounded select-none" 
+            title="Block duplizieren"
+          >
+            <Copy size={16} />
+          </button>
+          <div className="w-full h-px bg-gray-100"></div>
+          <button 
+            onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }} 
+            className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded select-none" 
+            title="Block löschen"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="pointer-events-none w-full">
          <BlockRenderer block={block} />
       </div>

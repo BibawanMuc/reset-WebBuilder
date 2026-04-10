@@ -4,6 +4,9 @@ import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import * as dotenv from 'dotenv';
+dotenv.config();
+import { GoogleGenAI } from '@google/genai';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { buildHtmlDocument } from './htmlBuilder.js';
@@ -202,6 +205,40 @@ app.post('/api/projects/:id/export/react', async (req, res) => {
     res.json({ message: 'React Export not yet fully implemented', id: req.params.id });
   } catch (error) {
     res.status(500).json({ error: 'Failed to export React project' });
+  }
+});
+
+// AI Text Generation Endpoint (Magic Wand)
+app.post('/api/ai/generate', async (req, res) => {
+  try {
+    const { blockType, topic } = req.body;
+    
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn("GEMINI_API_KEY is not set. Returning dummy data.");
+      return res.json({
+        headline: "[DUMMY] KI Generierte Headline",
+        subline: "Bitte trage deinen GEMINI_API_KEY in die .env Datei im server-Ordner ein und starte das Backend neu, um echte KI Antworten zu erhalten.",
+        text: "Hier könnte großartiger Copywriting Text stehen."
+      });
+    }
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    
+    const systemPrompt = `Du bist ein Weltklasse Conversion-Copywriter. Erstelle extrem professionelle, conversion-optimierte deutsche Texte für einen Website-Block vom Typ: "${blockType}". Das Thema lautet: "${topic || 'Allgemeines Marketing'}". Antworte IMMER im JSON-Format. Nutze exakt diese Form: {"headline": "Deine starke Headline", "subline": "Überzeugende Unterüberschrift", "text": "optionaler längerer fließtext"}. Nutze keine Markdown Code-Blöcke \`\`\`, sondern rohes JSON.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: systemPrompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const parsed = JSON.parse(response.text);
+    res.json(parsed);
+  } catch (error) {
+    console.error('AI Generation error:', error);
+    res.status(500).json({ error: 'Failed to generate content' });
   }
 });
 

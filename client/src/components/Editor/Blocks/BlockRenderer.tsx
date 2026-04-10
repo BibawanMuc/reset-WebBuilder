@@ -8,6 +8,10 @@ import { SplitBlock } from './SplitBlock';
 import { VideoBlock } from './VideoBlock';
 import { AvatarGridBlock } from './AvatarGridBlock';
 import { CarouselBlock } from './CarouselBlock';
+import { LeadCaptureBlock } from './LeadCaptureBlock';
+import { PricingBlock } from './PricingBlock';
+import { FaqBlock } from './FaqBlock';
+import { TestimonialBlock } from './TestimonialBlock';
 import type { Block } from '../../../types';
 
 interface Props {
@@ -36,6 +40,14 @@ export const BlockRenderer = ({ block }: Props) => {
       return <AvatarGridBlock {...block.props} />;
     case 'CarouselBlock':
       return <CarouselBlock {...block.props} />;
+    case 'LeadCaptureBlock':
+      return <LeadCaptureBlock {...block.props} />;
+    case 'PricingBlock':
+      return <PricingBlock {...block.props} />;
+    case 'FaqBlock':
+      return <FaqBlock {...block.props} />;
+    case 'TestimonialBlock':
+      return <TestimonialBlock {...block.props} />;
     default:
       return <div className="p-4 bg-red-50 text-red-500 rounded border border-red-200">Unbekannter Block-Typ: {block.type}</div>;
   }

@@ -13,9 +13,11 @@ interface AvatarGridBlockProps {
   f2?: AvatarProps;
   f3?: AvatarProps;
   f4?: AvatarProps;
-  bgType?: string;
   bgColor?: string;
   noShadow?: boolean;
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
 export const AvatarGridBlock = ({ 
@@ -23,7 +25,8 @@ export const AvatarGridBlock = ({
   f1, f2, f3, f4, 
   bgType = 'default', 
   bgColor, 
-  noShadow = false 
+  noShadow = false,
+  paddingTop = 4, paddingBottom = 4, maxWidth = 100
 }: AvatarGridBlockProps) => {
   const colClass = columns === '2' ? 'md:grid-cols-2' : columns === '4' ? 'md:grid-cols-4' : 'md:grid-cols-3';
   
@@ -41,8 +44,8 @@ export const AvatarGridBlock = ({
   const borderClassGrid = noShadow || bgType === 'transparent' ? 'border-none shadow-none' : 'border border-gray-100 shadow-sm';
 
   return (
-    <div className="w-full py-16 px-4">
-      <div className={`max-w-7xl mx-auto grid grid-cols-1 gap-8 ${colClass}`}>
+    <div className="w-full px-4 mx-auto" style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
+      <div className={`grid grid-cols-1 gap-8 ${colClass}`}>
         {renderAvatars.map((avatar, idx) => (
           <div 
             key={idx} 

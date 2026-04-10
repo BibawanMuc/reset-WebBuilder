@@ -22,6 +22,8 @@ export interface ProjectTheme {
   backgroundOpacity?: number;
   borderRadius?: string;
   showScrollToTop?: boolean;
+  enableAnimations?: boolean;
+  enableDarkMode?: boolean;
 }
 
 export interface ProjectConfig {
@@ -29,6 +31,8 @@ export interface ProjectConfig {
   toolbarType: string;
   logo: string | null;
   theme?: ProjectTheme;
+  impressumText?: string;
+  privacyText?: string;
 }
 
 export interface Project {

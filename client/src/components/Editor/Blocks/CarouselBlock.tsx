@@ -14,15 +14,20 @@ interface CarouselBlockProps {
   s2?: SlideProps;
   s3?: SlideProps;
   s4?: SlideProps;
-  s5?: SlideProps;
   s6?: SlideProps;
   autoPlay?: boolean;
+  aspectRatio?: '16/9' | '9/16' | '1/1' | 'mixed';
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
 export const CarouselBlock = ({ 
   slidesCount = '3', 
   s1, s2, s3, s4, s5, s6,
-  autoPlay = true
+  autoPlay = true,
+  aspectRatio = 'mixed',
+  paddingTop = 4, paddingBottom = 4, maxWidth = 100
 }: CarouselBlockProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -60,7 +65,7 @@ export const CarouselBlock = ({
   }, [currentIndex, autoPlay, slides.length]);
 
   return (
-    <div className="w-full py-16 px-4 overflow-hidden relative group">
+    <div className="w-full px-4 overflow-hidden relative group mx-auto" style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
       <div 
         ref={containerRef}
         className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 custom-scrollbar hide-scroll-bar focus:outline-none"
@@ -71,9 +76,15 @@ export const CarouselBlock = ({
             key={idx} 
             className="snap-center shrink-0 w-[85vw] md:w-[60vw] lg:w-[40vw] flex flex-col items-center bg-white border border-gray-100 rounded-theme shadow-sm overflow-hidden"
           >
-            <div className="w-full flex items-center justify-center overflow-hidden relative bg-gray-50">
+            <div 
+              className={`w-full flex items-center justify-center overflow-hidden relative bg-gray-50 ${aspectRatio === '16/9' ? 'aspect-video' : aspectRatio === '1/1' ? 'aspect-square' : aspectRatio === '9/16' ? 'aspect-[9/16]' : ''}`}
+            >
               {slide?.image ? (
-                <img src={slide.image} alt={slide.title || `Slide ${idx + 1}`} className="w-full h-auto max-h-[60vh] object-contain" />
+                <img 
+                  src={slide.image} 
+                  alt={slide.title || `Slide ${idx + 1}`} 
+                  className={`w-full ${aspectRatio !== 'mixed' ? 'h-full object-cover' : 'h-auto max-h-[60vh] object-contain'}`} 
+                />
               ) : (
                 <div className="w-full aspect-[4/3] flex items-center justify-center"><GalleryHorizontal className="w-12 h-12 text-gray-300" /></div>
               )}

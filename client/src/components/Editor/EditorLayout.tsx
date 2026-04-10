@@ -24,7 +24,7 @@ export const EditorLayout = () => {
     if (!over) return;
 
     // Handle adding new block from sidebar vs sorting existing
-    if (active.data.current?.isNewBlock && over.id === 'canvas-droppable') {
+    if (active.data.current?.isNewBlock && (over.id === 'canvas-droppable' || over.data.current?.type === 'SortableBlock')) {
       const type = active.data.current.type;
       const newBlock = {
         id: crypto.randomUUID(),
@@ -33,7 +33,20 @@ export const EditorLayout = () => {
       };
       
       const newPages = [...activeProject.pages];
-      newPages[0].blocks = [...newPages[0].blocks, newBlock];
+      const blocks = [...newPages[0].blocks];
+      
+      if (over.id === 'canvas-droppable') {
+        blocks.push(newBlock);
+      } else {
+        const overIndex = blocks.findIndex(b => b.id === over.id);
+        if (overIndex >= 0) {
+          blocks.splice(overIndex + 1, 0, newBlock);
+        } else {
+          blocks.push(newBlock);
+        }
+      }
+      
+      newPages[0].blocks = blocks;
       setActiveProject({ ...activeProject, pages: newPages });
     } else if (active.id !== over.id && active.data.current?.type === 'SortableBlock') {
       const newPages = [...activeProject.pages];

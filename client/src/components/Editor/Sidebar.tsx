@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Type, Image as ImageIcon, LayoutTemplate, Link, X, Navigation, Grid, Columns, Upload, ChevronDown, ChevronUp, Film, Users, GalleryHorizontal } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Type, Image as ImageIcon, LayoutTemplate, Link, X, Navigation, Grid, Columns, Upload, ChevronDown, ChevronUp, Film, Users, GalleryHorizontal, Dices, Mail, CreditCard, HelpCircle, MessageSquare, Wand2, Loader2 } from 'lucide-react';
 import { DraggableBlockType } from './DraggableBlockType';
 import { useProjectStore } from '../../store/useProjectStore';
 import { api } from '../../lib/api';
@@ -11,6 +11,10 @@ const AVAILABLE_BLOCKS = [
   { type: 'AvatarGridBlock', label: 'Avatar Cards', icon: Users },
   { type: 'FeaturesGridBlock', label: 'Features Grid', icon: Grid },
   { type: 'SplitBlock', label: 'Spalten Layout', icon: Columns },
+  { type: 'LeadCaptureBlock', label: 'Lead Formular', icon: Mail },
+  { type: 'PricingBlock', label: 'Pricing Table', icon: CreditCard },
+  { type: 'FaqBlock', label: 'FAQ', icon: HelpCircle },
+  { type: 'TestimonialBlock', label: 'Testimonials', icon: MessageSquare },
   { type: 'TextBlock', label: 'Text Block', icon: Type },
   { type: 'ImageBlock', label: 'Bild', icon: ImageIcon },
   { type: 'VideoBlock', label: 'Video', icon: Film },
@@ -20,6 +24,44 @@ const AVAILABLE_BLOCKS = [
 export const Sidebar = () => {
   const { activeProject, setActiveProject, selectedBlockId, setSelectedBlockId, updateBlock } = useProjectStore();
   const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
+  const [legalSettingsOpen, setLegalSettingsOpen] = useState(false);
+  
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateAI = async () => {
+    if(!selectedBlockId) return;
+    const selectedBlock = activeProject?.pages[0].blocks.find(b => b.id === selectedBlockId);
+    if (!selectedBlock) return;
+
+    setIsGenerating(true);
+    try {
+      const res = await fetch('http://localhost:3001/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blockType: selectedBlock.type, topic: aiPrompt })
+      });
+      const data = await res.json();
+      const updates: any = {};
+      
+      if(data.headline) updates.headline = data.headline;
+      if(selectedBlock.type === 'HeroSection' && data.subline) updates.subline = data.subline;
+      if(selectedBlock.type === 'TextBlock' && data.text) updates.content = data.text;
+      
+      if(data.subline && (selectedBlock.type === 'PricingBlock' || selectedBlock.type === 'FaqBlock' || selectedBlock.type === 'TestimonialBlock' || selectedBlock.type === 'LeadCaptureBlock')) {
+        updates.subline = data.subline;
+      }
+      
+      if(Object.keys(updates).length > 0) {
+        updateBlock(selectedBlock.id, updates);
+      }
+      setAiPrompt("");
+    } catch(err) {
+      alert("Fehler bei der KI Generierung.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (!activeProject) return null;
 
@@ -60,6 +102,32 @@ export const Sidebar = () => {
             <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded text-xs font-mono inline-block">
               {selectedBlock.type}
             </div>
+
+            {/* AI Assistant Section */}
+            {['HeroSection', 'TextBlock', 'PricingBlock', 'FaqBlock', 'TestimonialBlock', 'LeadCaptureBlock', 'FeaturesGridBlock'].includes(selectedBlock.type) && (
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Wand2 size={16} className="text-indigo-500" />
+                  <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider">Magic AI</h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Worum geht es hier? (Thema)"
+                    value={aiPrompt}
+                    onChange={e => setAiPrompt(e.target.value)}
+                    className="w-full border border-indigo-200 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-indigo-500 bg-white"
+                  />
+                  <button 
+                    onClick={handleGenerateAI}
+                    disabled={isGenerating || !aiPrompt.trim()}
+                    className="flex justify-center items-center gap-2 w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  >
+                    {isGenerating ? <Loader2 size={14} className="animate-spin" /> : 'Texte Generieren'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Inpsector: Navbar */}
             {selectedBlock.type === 'NavbarBlock' && (
@@ -348,12 +416,26 @@ export const Sidebar = () => {
                   <select 
                     value={selectedBlock.props.slidesCount || '3'} 
                     onChange={e => updateBlock(selectedBlock.id, { slidesCount: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black mb-3"
                   >
                     <option value="3">3 Slides</option>
                     <option value="4">4 Slides</option>
                     <option value="5">5 Slides</option>
                     <option value="6">6 Slides</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Format (Bild-Zuschnitt)</label>
+                  <select 
+                    value={selectedBlock.props.aspectRatio || 'mixed'} 
+                    onChange={e => updateBlock(selectedBlock.id, { aspectRatio: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black"
+                  >
+                    <option value="mixed">Mixed (Auto Height)</option>
+                    <option value="16/9">Querformat (16:9)</option>
+                    <option value="1/1">Quadrat (1:1)</option>
+                    <option value="9/16">Hochformat (9:16)</option>
                   </select>
                 </div>
 
@@ -538,6 +620,20 @@ export const Sidebar = () => {
                   />
                   <label htmlFor="swapSides" className="text-sm font-medium text-gray-700">Bild auf der linken Seite?</label>
                 </div>
+
+                <div className="mt-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-medium text-gray-700">Bildbreite (Spalten)</label>
+                    <span className="text-xs text-gray-500">{selectedBlock.props.imageWidth || 50}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="20" max="80" step="5"
+                    value={selectedBlock.props.imageWidth || 50} 
+                    onChange={e => updateBlock(selectedBlock.id, { imageWidth: parseInt(e.target.value) })}
+                    className="w-full accent-black"
+                  />
+                </div>
               </>
             )}
 
@@ -637,6 +733,123 @@ export const Sidebar = () => {
                 </div>
               </>
             )}
+
+            {/* Inpsector: LeadCaptureBlock */}
+            {selectedBlock.type === 'LeadCaptureBlock' && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Headline</label>
+                  <input 
+                    type="text"
+                    value={selectedBlock.props.headline || ''} 
+                    onChange={e => updateBlock(selectedBlock.id, { headline: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black"
+                    placeholder="Werde Teil der Community!"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Subline</label>
+                  <textarea 
+                    value={selectedBlock.props.subline || ''} 
+                    onChange={e => updateBlock(selectedBlock.id, { subline: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm h-20 focus:ring-1 focus:ring-black"
+                    placeholder="Melde dich für unseren Newsletter an..."
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Button Text</label>
+                  <input 
+                    type="text"
+                    value={selectedBlock.props.buttonText || ''} 
+                    onChange={e => updateBlock(selectedBlock.id, { buttonText: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black"
+                    placeholder="Kostenlos eintragen"
+                  />
+                </div>
+                <div className="pt-2 border-t border-gray-200 mt-2">
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Webhook URL / API</label>
+                  <input 
+                    type="text"
+                    value={selectedBlock.props.endpoint || ''} 
+                    onChange={e => updateBlock(selectedBlock.id, { endpoint: e.target.value })}
+                    placeholder="https://..."
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black font-mono"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">Die eingegebene E-Mail Adresse wird per POST an diese URL gesendet (Feld: "email").</p>
+                </div>
+              </>
+            )}
+
+            {/* Inspector: PricingBlock */}
+            {selectedBlock.type === 'PricingBlock' && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Headline</label>
+                  <input type="text" value={selectedBlock.props.headline || ''} onChange={e => updateBlock(selectedBlock.id, { headline: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black" />
+                </div>
+                
+                <div className="border-t border-gray-200 pt-4 mt-2">
+                  <h5 className="text-xs font-bold text-gray-900 mb-2">Paket 1 (Links)</h5>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" placeholder="Name (z.B. Starter)" value={selectedBlock.props.tier1Name || ''} onChange={e => updateBlock(selectedBlock.id, { tier1Name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                    <input type="text" placeholder="Preis (z.B. 0€)" value={selectedBlock.props.tier1Price || ''} onChange={e => updateBlock(selectedBlock.id, { tier1Price: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                  </div>
+                  <input type="text" placeholder="Features (Komma-getrennt)" value={selectedBlock.props.tier1Features || ''} onChange={e => updateBlock(selectedBlock.id, { tier1Features: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                </div>
+
+                <div className="border-t border-gray-200 pt-4 mt-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <h5 className="text-xs font-bold text-gray-900">Paket 2 (Mitte / Pro)</h5>
+                    <div className="flex items-center gap-1">
+                      <input type="checkbox" id="pricing_highlight" checked={selectedBlock.props.tier2Highlight !== false} onChange={e => updateBlock(selectedBlock.id, { tier2Highlight: e.target.checked })} />
+                      <label htmlFor="pricing_highlight" className="text-[10px] uppercase font-bold text-primary cursor-pointer">Highlight</label>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" placeholder="Name (z.B. Pro)" value={selectedBlock.props.tier2Name || ''} onChange={e => updateBlock(selectedBlock.id, { tier2Name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                    <input type="text" placeholder="Preis (z.B. 29€)" value={selectedBlock.props.tier2Price || ''} onChange={e => updateBlock(selectedBlock.id, { tier2Price: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                  </div>
+                  <input type="text" placeholder="Features (Komma-getrennt)" value={selectedBlock.props.tier2Features || ''} onChange={e => updateBlock(selectedBlock.id, { tier2Features: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                </div>
+
+                <div className="border-t border-gray-200 pt-4 mt-2">
+                  <h5 className="text-xs font-bold text-gray-900 mb-2">Paket 3 (Rechts)</h5>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" placeholder="Name (z.B. Enterprise)" value={selectedBlock.props.tier3Name || ''} onChange={e => updateBlock(selectedBlock.id, { tier3Name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                    <input type="text" placeholder="Preis (z.B. 99€)" value={selectedBlock.props.tier3Price || ''} onChange={e => updateBlock(selectedBlock.id, { tier3Price: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                  </div>
+                  <input type="text" placeholder="Features (Komma-getrennt)" value={selectedBlock.props.tier3Features || ''} onChange={e => updateBlock(selectedBlock.id, { tier3Features: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-black" />
+                </div>
+              </>
+            )}
+
+            {/* Inspector: FaqBlock */}
+            {selectedBlock.type === 'FaqBlock' && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Headline</label>
+                  <input type="text" value={selectedBlock.props.headline || ''} onChange={e => updateBlock(selectedBlock.id, { headline: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">FAQs (JSON)</label>
+                  <textarea value={selectedBlock.props.faqs || ''} onChange={e => updateBlock(selectedBlock.id, { faqs: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs font-mono h-32 focus:ring-1 focus:ring-black" placeholder='[{"q": "Frage?", "a": "Antwort"}]' />
+                </div>
+              </>
+            )}
+
+            {/* Inspector: TestimonialBlock */}
+            {selectedBlock.type === 'TestimonialBlock' && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Headline</label>
+                  <input type="text" value={selectedBlock.props.headline || ''} onChange={e => updateBlock(selectedBlock.id, { headline: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-black" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Testimonials (JSON)</label>
+                  <textarea value={selectedBlock.props.testimonials || ''} onChange={e => updateBlock(selectedBlock.id, { testimonials: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs font-mono h-32 focus:ring-1 focus:ring-black" placeholder='[{"quote": "Super", "author": "Max Muster", "role": "CEO", "stars": 5}]' />
+                </div>
+              </>
+            )}
             
             {/* Geerbte Design-Einstellungen für ALLE Blöcke */}
             <div className="border-t border-gray-200 pt-6 mt-6">
@@ -704,13 +917,64 @@ export const Sidebar = () => {
               </div>
             </div>
             
+            <div className="p-5 border-b border-gray-200 bg-gray-50/50">
+              <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <span className="text-lg">📐</span> Layout & Abstände
+              </h4>
+              
+              <div className="space-y-5">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-medium text-gray-500 uppercase">Abstand Oben</label>
+                    <span className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-mono">{selectedBlock.props.paddingTop ?? 4}rem</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="15" step="1"
+                    value={selectedBlock.props.paddingTop ?? 4}
+                    onChange={e => updateBlock(selectedBlock.id, { paddingTop: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-medium text-gray-500 uppercase">Abstand Unten</label>
+                    <span className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-mono">{selectedBlock.props.paddingBottom ?? 4}rem</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="15" step="1"
+                    value={selectedBlock.props.paddingBottom ?? 4}
+                    onChange={e => updateBlock(selectedBlock.id, { paddingBottom: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-medium text-gray-500 uppercase">Block Breite</label>
+                    <span className="text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-mono">{selectedBlock.props.maxWidth ?? 100}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="40" max="100" step="5"
+                    value={selectedBlock.props.maxWidth ?? 100}
+                    onChange={e => updateBlock(selectedBlock.id, { maxWidth: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+                  />
+                  <p className="text-[9px] text-gray-400 mt-1">Gilt für den inneren Inhaltsbereich (max-width).</p>
+                </div>
+              </div>
+            </div>
+
             <button 
               onClick={() => {
                 const newPages = [...activeProject.pages];
                 newPages[0].blocks = newPages[0].blocks.filter(b => b.id !== selectedBlock.id);
                 useProjectStore.getState().setActiveProject({ ...activeProject, pages: newPages });
               }}
-              className="mt-8 w-full py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+              className="mt-6 mb-6 mx-4 w-[calc(100%-2rem)] py-2.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
             >
               Block löschen
             </button>
@@ -729,6 +993,38 @@ export const Sidebar = () => {
             
             {globalSettingsOpen && (
               <div className="p-6 pt-2 space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar border-t border-gray-100">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase">Farben</h4>
+                  <button 
+                    onClick={() => {
+                      const palettes = [
+                        { p: '#0ea5e9', s: '#38bdf8', t: '#0f172a', b1: '#f0f9ff', b2: '#e0f2fe' },
+                        { p: '#10b981', s: '#34d399', t: '#064e3b', b1: '#ecfdf5', b2: '#d1fae5' },
+                        { p: '#f43f5e', s: '#fb7185', t: '#881337', b1: '#fff1f2', b2: '#ffe4e6' },
+                        { p: '#8b5cf6', s: '#a78bfa', t: '#4c1d95', b1: '#f5f3ff', b2: '#ede9fe' },
+                        { p: '#f59e0b', s: '#fbbf24', t: '#78350f', b1: '#fffbeb', b2: '#fef3c7' },
+                        { p: '#000000', s: '#a855f7', t: '#111827', b1: '#f9fafb', b2: '#f9fafb' },
+                        { p: '#4f46e5', s: '#818cf8', t: '#312e81', b1: '#eef2ff', b2: '#e0e7ff' },
+                        { p: '#14b8a6', s: '#5eead4', t: '#134e4a', b1: '#f0fdfa', b2: '#ccfbf1' },
+                        { p: '#ef4444', s: '#f87171', t: '#7f1d1d', b1: '#fef2f2', b2: '#fee2e2' },
+                        { p: '#111827', s: '#4b5563', t: '#f9fafb', b1: '#030712', b2: '#111827' } // Dark Mode
+                      ];
+                      const random = palettes[Math.floor(Math.random() * palettes.length)];
+                      updateTheme({
+                        primaryColor: random.p,
+                        secondaryColor: random.s,
+                        textColor: random.t,
+                        backgroundColor: random.b1,
+                        backgroundColor2: random.b2
+                      });
+                    }}
+                    className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors flex flex-row gap-1 items-center"
+                    title="Zufällige Farbkombination"
+                  >
+                    <Dices size={16} />
+                    <span className="text-[10px] font-medium uppercase">Shuffle</span>
+                  </button>
+                </div>
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-sm font-medium text-gray-700">Hauptfarbe</label>
                   <div className="relative">
@@ -895,6 +1191,26 @@ export const Sidebar = () => {
                   <label htmlFor="showScrollToTop" className="text-sm font-medium text-gray-700">"Nach Oben" Pfeil anzeigen</label>
                 </div>
 
+                <div className="flex items-center gap-2 pt-2 border-t mt-2">
+                  <input 
+                    type="checkbox" 
+                    id="enableAnimations"
+                    checked={theme.enableAnimations || false}
+                    onChange={e => updateTheme({ enableAnimations: e.target.checked })}
+                  />
+                  <label htmlFor="enableAnimations" className="text-sm font-medium text-gray-700">Elegante Scroll-Animationen (Fade-Up)</label>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t mt-2">
+                  <input 
+                    type="checkbox" 
+                    id="enableDarkMode"
+                    checked={theme.enableDarkMode || false}
+                    onChange={e => updateTheme({ enableDarkMode: e.target.checked })}
+                  />
+                  <label htmlFor="enableDarkMode" className="text-sm font-medium text-gray-700">Dark Mode Toggle aktivieren (Export)</label>
+                </div>
+
                 <div>
                   <label className="text-sm font-medium text-gray-700 block mb-1">Globales Logo</label>
                   <div className="flex items-center gap-2">
@@ -924,6 +1240,38 @@ export const Sidebar = () => {
                       />
                     </label>
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="border-b border-gray-200 shrink-0 bg-gray-50 flex flex-col">
+            <button 
+              onClick={() => setLegalSettingsOpen(!legalSettingsOpen)}
+              className="p-4 flex items-center justify-between hover:bg-gray-100 transition-colors cursor-pointer w-full text-left"
+            >
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Rechtliches</h3>
+              {legalSettingsOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+            </button>
+            
+            {legalSettingsOpen && (
+              <div className="p-6 pt-2 space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar border-t border-gray-100">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Impressum</label>
+                  <textarea 
+                    value={activeProject.config?.impressumText ?? `**Angaben gem&auml;&szlig; &sect; 5 TMG**\n[Firma / Vorname Name]\n[Stra&szlig;e Hausnummer]\n[PLZ Ort]\n\n**Kontakt**\nTelefon: [Telefonnummer]\nE-Mail: [E-Mail-Adresse]\n\n**Umsatzsteuer-ID**\nUmsatzsteuer-Identifikationsnummer gem&auml;&szlig; &sect; 27 a Umsatzsteuergesetz:\n[DE123456789]`} 
+                    onChange={e => setActiveProject({ ...activeProject, config: { ...activeProject.config, impressumText: e.target.value }})}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm h-64 focus:ring-1 focus:ring-black"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">Markdown-Format (*kursiv*, **fett**) wird unterstützt.</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Datenschutz</label>
+                  <textarea 
+                    value={activeProject.config?.privacyText ?? `**1. Datenschutz auf einen Blick**\nDie folgenden Hinweise geben einen einfachen &Uuml;berblick dar&uuml;ber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.\n\n**Verantwortliche Stelle**\n[Firma / Vorname Name]\n[Stra&szlig;e Hausnummer]\n[PLZ Ort]\nE-Mail: [E-Mail-Adresse]\n\n**2. Datenerfassung auf dieser Website**\nIhre Daten werden zum einen dadurch erhoben, dass Sie uns diese mitteilen. Daten, die beim Besuch der Website anfallen (z.B. IP-Adressen), werden zur Fehlerbehebung oder Analyse auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO verarbeitet.`} 
+                    onChange={e => setActiveProject({ ...activeProject, config: { ...activeProject.config, privacyText: e.target.value }})}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm h-64 focus:ring-1 focus:ring-black"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">Markdown-Format (*kursiv*, **fett**) wird unterstützt.</p>
                 </div>
               </div>
             )}

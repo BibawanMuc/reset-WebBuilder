@@ -14,3 +14,14 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+@layer utilities {
+  @media (min-width: 1024px) {
+    .split-grid-left {
+      grid-template-columns: var(--split-img-w, 50%) 1fr;
+    }
+    .split-grid-right {
+      grid-template-columns: 1fr var(--split-img-w, 50%);
+    }
+  }
+}

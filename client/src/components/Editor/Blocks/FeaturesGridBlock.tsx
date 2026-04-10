@@ -17,6 +17,9 @@ interface FeaturesGridBlockProps {
   bgColor?: string;
   noShadow?: boolean;
   showDecoration?: boolean;
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
 const IconMapper = ({ name }: { name: string }) => {
@@ -30,7 +33,7 @@ const IconMapper = ({ name }: { name: string }) => {
   }
 };
 
-export const FeaturesGridBlock = ({ columns = '3', f1, f2, f3, f4, bgType = 'default', bgColor, noShadow = false, showDecoration = false }: FeaturesGridBlockProps) => {
+export const FeaturesGridBlock = ({ columns = '3', f1, f2, f3, f4, bgType = 'default', bgColor, noShadow = false, showDecoration = false, paddingTop = 4, paddingBottom = 4, maxWidth = 100 }: FeaturesGridBlockProps) => {
   const colClass = columns === '2' ? 'md:grid-cols-2' : columns === '4' ? 'md:grid-cols-4' : 'md:grid-cols-3';
   
   const features = [
@@ -48,7 +51,7 @@ export const FeaturesGridBlock = ({ columns = '3', f1, f2, f3, f4, bgType = 'def
   const borderClassGrid = noShadow || bgType === 'transparent' ? 'border-none shadow-none' : 'border border-gray-100 shadow-sm';
 
   return (
-    <div className="w-full py-16 px-6 relative overflow-hidden">
+    <div className="w-full px-6 relative overflow-hidden mx-auto" style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
       {/* Decorative gradient blob */}
       {showDecoration && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-secondary blur-[120px] opacity-10 pointer-events-none z-0"></div>

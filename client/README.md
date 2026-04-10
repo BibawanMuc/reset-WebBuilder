@@ -1,73 +1,39 @@
-# React + TypeScript + Vite
+# PX WebBuilder
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PX WebBuilder is the dedicated, visually-driven website generation software part of the Reset Studio suite. Designed as a flexible, modular block editor, the platform empowers users to quickly build responsive, high-converting one-pagers visually and then instantly export them as standalone, dependency-free HTML packages.
 
-Currently, two official plugins are available:
+## Universal Fluid Layout Engine (V2)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The most recent core upgrade (V2) integrates a completely fluid, state-driven layout engine across all blocks.
 
-## React Compiler
+- **Dynamischer Leerraum:** Stufenlose Skalierung von `Padding Top` und `Padding Bottom` pro Block-Instanz.
+- **Variable Block-Breiten:** Jeder Container kann flexibel in seiner `Max Width` zwischen 40% und 100% justiert werden.
+- **Dynamische Raster:** Spezifische Spalten-Einstellungen per Arbitrary-Values (z.B. für das Layout-Verhältnis im SplitBlock).
+- **Synchroner Export:** Alle im Editor via Sidebar festgelegten Slider-Werte werden zur Compile-Zeit direkt vom `htmlBuilder` als Inline-CSS Attribute geparst, weshalb das exportierte ZIP immer exakt dem Live-Editor Zustand entspricht.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+### Frontend (Client)
+- **Framework:** React 18 / TypeScript
+- **Styling:** Tailwind CSS V4
+- **State:** Zustand (zustand) für das Projekt und Block Management
+- **Interaction:** `@dnd-kit` für das Drag-and-Drop Block-Ordering. `lucide-react` für UX-Icons.
+- **Build Tool:** Vite
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Backend (Server)
+- **Framework:** Express / Node.js
+- **Exporter:** Custom WebBuilder HTML Compiler (`htmlBuilder.js`)
+- **Archiving:** `archiver` zur on-the-fly Generierung der `.zip` Export-Pakete.
+- **Asset Pipeline:** Multi-File Upload Handling via `multer`.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Developer Scripts
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+In the `server` directory:
+- `npm run dev`: Starts the express backend on port 3001.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+In the `client` directory:
+- `npm run dev`: Starts the Vite client on port 5173.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*PX WebBuilder is an internal sub-service of Reset Studio. All code is proprietary and developed by Pixelschickeria.*

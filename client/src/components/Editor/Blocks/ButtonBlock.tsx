@@ -3,9 +3,12 @@ interface ButtonBlockProps {
   url?: string;
   alignment?: 'left' | 'center' | 'right';
   variant?: 'primary' | 'secondary' | 'outline';
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
-export const ButtonBlock = ({ label, url, alignment = 'center', variant = 'primary' }: ButtonBlockProps) => {
+export const ButtonBlock = ({ label, url, alignment = 'center', variant = 'primary', paddingTop = 2, paddingBottom = 2, maxWidth = 100 }: ButtonBlockProps) => {
   const baseClasses = "inline-flex items-center justify-center px-8 py-4 font-semibold rounded-theme transition-all shadow-sm hover:shadow-md pointer-events-none";
   let variantClasses = "";
   
@@ -18,7 +21,7 @@ export const ButtonBlock = ({ label, url, alignment = 'center', variant = 'prima
   }
 
   return (
-    <div className={`w-full py-6 px-4 flex justify-${alignment === 'center' ? 'center' : alignment === 'right' ? 'end' : 'start'}`}>
+    <div className={`w-full px-4 flex justify-${alignment === 'center' ? 'center' : alignment === 'right' ? 'end' : 'start'} mx-auto`} style={{ paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}>
       <button className={`${baseClasses} ${variantClasses}`}>
         {label || "Klick mich"}
       </button>

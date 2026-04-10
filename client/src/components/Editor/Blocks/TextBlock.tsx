@@ -8,16 +8,22 @@ interface TextBlockProps {
   bgColor?: string;
   noShadow?: boolean;
   showDecoration?: boolean;
+  paddingTop?: number;
+  paddingBottom?: number;
+  maxWidth?: number;
 }
 
-export const TextBlock = ({ title, content, alignment = 'left', bgType = 'default', bgColor, noShadow = false, showDecoration = false }: TextBlockProps) => {
+export const TextBlock = ({ title, content, alignment = 'left', bgType = 'default', bgColor, noShadow = false, showDecoration = false, paddingTop = 4, paddingBottom = 4, maxWidth = 100 }: TextBlockProps) => {
   const customBg = bgType === 'custom' && bgColor ? { backgroundColor: bgColor } : {};
   const bgClassGrid = bgType === 'transparent' ? 'bg-transparent' : (bgType === 'custom' ? '' : '');
   const borderClassGrid = noShadow || bgType === 'transparent' ? 'border-none shadow-none' : (bgType === 'custom' ? 'border border-gray-100 shadow-sm' : '');
-  const paddingClass = bgType === 'custom' || bgType === 'white' ? 'p-8 md:p-12' : '';
+  const paddingClass = bgType === 'custom' || bgType === 'white' ? 'px-8 md:px-12' : 'px-4';
 
   return (
-    <div className={`w-full py-16 px-8 md:px-12 my-2 rounded-theme relative overflow-hidden ${bgClassGrid} ${borderClassGrid} ${paddingClass}`} style={customBg}>
+    <div 
+      className={`w-full my-2 rounded-theme relative overflow-hidden mx-auto ${bgClassGrid} ${borderClassGrid} ${paddingClass}`} 
+      style={{ ...customBg, paddingTop: `${paddingTop}rem`, paddingBottom: `${paddingBottom}rem`, maxWidth: `${maxWidth}%` }}
+    >
       {/* Decorative gradient blob */}
       {showDecoration && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-secondary blur-[100px] opacity-15 pointer-events-none z-0"></div>
